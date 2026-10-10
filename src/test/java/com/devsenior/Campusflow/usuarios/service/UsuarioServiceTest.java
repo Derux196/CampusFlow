@@ -7,6 +7,7 @@ import com.devsenior.Campusflow.usuarios.model.RolUsuario;
 import com.devsenior.Campusflow.usuarios.model.Usuario;
 import com.devsenior.Campusflow.usuarios.repository.UsuarioRepository;
 import com.devsenior.Campusflow.common.exception.ResourceNotFoundException;
+import com.devsenior.Campusflow.common.exception.EmailDuplicadoException;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -112,10 +113,10 @@ class UsuarioServiceTest {
                         () -> usuarioService.registrarUsuario(request)
                 );
 
-        assertEquals(
-                "No se permite el registro como administrador",
-                error.getMessage()
-        );
+      assertEquals(
+    "Solo se permite el registro como estudiante o instructor",
+    error.getMessage()
+);
 
         verify(usuarioRepository, never())
                 .save(any(Usuario.class));
@@ -123,7 +124,7 @@ class UsuarioServiceTest {
         verifyNoInteractions(passwordEncoder);
     }
 
-    
+
 @Test
 void debeActualizarNombreYPreferencias() {
 
@@ -184,6 +185,41 @@ void debeRechazarActualizacionDeUsuarioInexistente() {
     verify(usuarioRepository).findById(id);
     verify(usuarioRepository, never())
             .save(any(Usuario.class));
+}
+
+
+
+@Test
+void debeRechazarCorreoDuplicado() {
+
+    CrearUsuarioRequest request = new CrearUsuarioRequest();
+
+    request.setNombre("Estudiante Nuevo");
+    request.setEmail("prueba@campusflow.com");
+    request.setPassword("ClaveSegura123!");
+    request.setRol(RolUsuario.ESTUDIANTE);
+
+    when(usuarioRepository.existsByEmail(
+            "prueba@campusflow.com"
+    )).thenReturn(true);
+
+    EmailDuplicadoException error = assertThrows(
+            EmailDuplicadoException.class,
+            () -> usuarioService.registrarUsuario(request)
+    );
+
+    assertEquals(
+            "El correo electrónico ya está registrado",
+            error.getMessage()
+    );
+
+    verify(usuarioRepository)
+            .existsByEmail("prueba@campusflow.com");
+
+    verify(usuarioRepository, never())
+            .save(any(Usuario.class));
+
+    verifyNoInteractions(passwordEncoder);
 }
 
 

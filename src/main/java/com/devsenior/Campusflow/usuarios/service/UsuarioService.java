@@ -16,6 +16,7 @@ import com.devsenior.Campusflow.usuarios.dto.ActualizarUsuarioRequest;
 import com.devsenior.Campusflow.usuarios.model.PreferenciasUsuario;
 import com.devsenior.Campusflow.common.exception.ResourceNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
+import com.devsenior.Campusflow.common.exception.EmailDuplicadoException;
 
 @Service
 public class UsuarioService {
@@ -76,27 +77,40 @@ public UsuarioResponse actualizarUsuario(
             .toList();
 }
 
-    public UsuarioResponse registrarUsuario(
-            CrearUsuarioRequest request) {
 
-        if (request.getRol() == RolUsuario.ADMINISTRADOR) {
-            throw new IllegalArgumentException(
-                    "No se permite el registro como administrador"
-            );
-        }
+public UsuarioResponse registrarUsuario(
+        CrearUsuarioRequest request) {
 
-        Usuario usuario = new Usuario();
-        usuario.setNombre(request.getNombre());
-        usuario.setEmail(request.getEmail());
-        usuario.setRol(request.getRol());
 
-        // Guardar únicamente el hash BCrypt
-        usuario.setPassword(
-                passwordEncoder.encode(request.getPassword())
+if (usuarioRepository.existsByEmail(request.getEmail())) {
+    throw new EmailDuplicadoException(
+            "El correo electrónico ya está registrado"
+    );
+}
+
+
+    if (request.getRol() != RolUsuario.ESTUDIANTE &&
+            request.getRol() != RolUsuario.INSTRUCTOR) {
+
+        throw new IllegalArgumentException(
+                "Solo se permite el registro como estudiante o instructor"
         );
-
-        Usuario guardado = usuarioRepository.save(usuario);
-
-        return UsuarioMapper.toResponse(guardado);
     }
+
+    Usuario usuario = new Usuario();
+
+    usuario.setNombre(request.getNombre());
+    usuario.setEmail(request.getEmail());
+    usuario.setRol(request.getRol());
+
+    // La contraseña se guarda como hash BCrypt
+    usuario.setPassword(
+            passwordEncoder.encode(request.getPassword())
+    );
+
+    Usuario guardado = usuarioRepository.save(usuario);
+
+    return UsuarioMapper.toResponse(guardado);
+}
+
 }

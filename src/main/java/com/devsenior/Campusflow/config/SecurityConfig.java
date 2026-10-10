@@ -3,17 +3,18 @@ package com.devsenior.Campusflow.config;
 
 import com.devsenior.Campusflow.security.JwtAuthenticationFilter;
 
+import jakarta.servlet.DispatcherType;
+
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.http.HttpStatus;
-
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -24,31 +25,56 @@ public class SecurityConfig {
             JwtAuthenticationFilter jwtFilter) throws Exception {
 
         http
+            // API REST: autenticacion mediante JWT
             .csrf(csrf -> csrf.disable())
+
+            // No guardar autenticacion en sesiones HTTP
             .sessionManagement(session ->
                 session.sessionCreationPolicy(
                     SessionCreationPolicy.STATELESS
                 )
             )
+
+            // Solicitudes sin autenticacion: 401
             .exceptionHandling(ex ->
                 ex.authenticationEntryPoint(
-                    new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+                    new HttpStatusEntryPoint(
+                        HttpStatus.UNAUTHORIZED
+                    )
                 )
             )
+
             .authorizeHttpRequests(auth -> auth
+
+                // Permitir despachos internos de errores
+                .dispatcherTypeMatchers(DispatcherType.ERROR)
+                    .permitAll()
+
+                // Endpoints publicos de consulta
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/cursos",
                     "/api/saludo"
                 ).permitAll()
+
+                // Login y registro publicos
                 .requestMatchers(
                     HttpMethod.POST,
-                    "/api/auth/login"
+                    "/api/auth/login",
+                    "/api/auth/registro"
                 ).permitAll()
-                .requestMatchers("/api/usuarios/**")
-                    .hasRole("ADMINISTRADOR")
+
+                // Rutas exclusivas de administradores
+                .requestMatchers(
+                    "/api/usuarios",
+                    "/api/usuarios/**"
+                ).hasRole("ADMINISTRADOR")
+
+                // Denegar todas las demas rutas
                 .anyRequest().denyAll()
             )
+
+            // Validar JWT antes del filtro de login
             .addFilterBefore(
                 jwtFilter,
                 UsernamePasswordAuthenticationFilter.class
@@ -57,16 +83,16 @@ public class SecurityConfig {
         return http.build();
     }
 
-@Bean
-public FilterRegistrationBean<JwtAuthenticationFilter>
-        jwtFilterRegistration(JwtAuthenticationFilter jwtFilter) {
+    // Evitar registrar el filtro JWT dos veces
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter>
+            jwtFilterRegistration(JwtAuthenticationFilter jwtFilter) {
 
-    FilterRegistrationBean<JwtAuthenticationFilter> registration =
-            new FilterRegistrationBean<>(jwtFilter);
+        FilterRegistrationBean<JwtAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(jwtFilter);
 
-    registration.setEnabled(false);
+        registration.setEnabled(false);
 
-    return registration;
-}
-
+        return registration;
+    }
 }

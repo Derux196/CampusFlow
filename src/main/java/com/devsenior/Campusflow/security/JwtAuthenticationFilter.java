@@ -28,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     public JwtAuthenticationFilter(
             JwtService jwtService,
             UsuarioRepository usuarioRepository) {
+
         this.jwtService = jwtService;
         this.usuarioRepository = usuarioRepository;
     }
@@ -41,8 +42,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authorization = request.getHeader("Authorization");
 
-        if (authorization != null &&
-                authorization.startsWith("Bearer ")) {
+        if (authorization != null
+                && authorization.startsWith("Bearer ")) {
 
             String token = authorization.substring(7);
 
@@ -53,15 +54,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .findByEmail(email)
                         .orElse(null);
 
-                if (usuario != null &&
-                        usuario.getRol() != null &&
-                        SecurityContextHolder.getContext()
-                                .getAuthentication() == null) {
+                if (usuario == null) {
+
+                } else if (usuario.getRol() == null) {
+
+                } else if (SecurityContextHolder.getContext()
+                        .getAuthentication() == null) {
 
                     String rol = usuario.getRol().name();
 
                     var authorities = List.of(
-                            new SimpleGrantedAuthority("ROLE_" + rol)
+                            new SimpleGrantedAuthority(
+                                    "ROLE_" + rol
+                            )
                     );
 
                     var authentication =
@@ -73,9 +78,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     SecurityContextHolder.getContext()
                             .setAuthentication(authentication);
+
+                } else {
                 }
 
             } catch (JwtException | IllegalArgumentException ex) {
+
                 SecurityContextHolder.clearContext();
             }
         }

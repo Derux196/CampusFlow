@@ -41,6 +41,30 @@ public ResponseEntity<Map<String, String>> manejarCredencialesIncorrectas(
             ));
 }
 
+@ExceptionHandler(IllegalArgumentException.class)
+public ResponseEntity<Map<String, String>> manejarArgumentoInvalido(
+        IllegalArgumentException ex) {
+
+    return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(Map.of(
+                    "error", "Solicitud inválida"
+            ));
+}
+
+
+@ExceptionHandler(EmailDuplicadoException.class)
+public ResponseEntity<Map<String, String>> manejarEmailDuplicado(
+        EmailDuplicadoException ex) {
+
+    return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(Map.of(
+                    "error", "El correo electrónico ya está registrado"
+            ));
+}
+
+
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> manejarGeneral(
