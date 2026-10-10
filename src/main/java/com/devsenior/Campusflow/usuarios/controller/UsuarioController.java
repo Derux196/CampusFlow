@@ -3,12 +3,12 @@ package com.devsenior.Campusflow.usuarios.controller;
 
 import java.util.List;
 
-import com.devsenior.Campusflow.usuarios.model.Usuario;
-import com.devsenior.Campusflow.usuarios.service.UsuarioService;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.devsenior.Campusflow.usuarios.dto.UsuarioResponse;
+import com.devsenior.Campusflow.usuarios.service.UsuarioService;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -21,7 +21,7 @@ public class UsuarioController {
     }
 
     @GetMapping
-    public List<Usuario> listar() {
+    public List<UsuarioResponse> listarUsuarios() {
         return usuarioService.listarUsuarios();
     }
 }
