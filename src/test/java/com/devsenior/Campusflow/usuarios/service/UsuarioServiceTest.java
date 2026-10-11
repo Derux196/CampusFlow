@@ -8,6 +8,8 @@ import com.devsenior.Campusflow.usuarios.model.Usuario;
 import com.devsenior.Campusflow.usuarios.repository.UsuarioRepository;
 import com.devsenior.Campusflow.common.exception.ResourceNotFoundException;
 import com.devsenior.Campusflow.common.exception.EmailDuplicadoException;
+import com.devsenior.Campusflow.common.exception.UsuarioConRelacionesException;
+import com.devsenior.Campusflow.cursos.model.Curso;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -220,6 +222,123 @@ void debeRechazarCorreoDuplicado() {
             .save(any(Usuario.class));
 
     verifyNoInteractions(passwordEncoder);
+}
+
+@Test
+void debeCrearAdministradorDesdeOperacionAdministrativa() {
+
+    CrearUsuarioRequest request = new CrearUsuarioRequest();
+    request.setNombre("Administrador");
+    request.setEmail("admin@campusflow.com");
+    request.setPassword("ClaveSegura123!");
+    request.setRol(RolUsuario.ADMINISTRADOR);
+
+    when(passwordEncoder.encode("ClaveSegura123!"))
+            .thenReturn("hashBCryptSimulado");
+    when(usuarioRepository.save(any(Usuario.class)))
+            .thenAnswer(invocacion -> invocacion.getArgument(0));
+
+    UsuarioResponse resultado =
+            usuarioService.crearUsuarioAdministrativo(request);
+
+    assertEquals(RolUsuario.ADMINISTRADOR, resultado.getRol());
+    verify(passwordEncoder).encode("ClaveSegura123!");
+    verify(usuarioRepository).save(
+            argThat(usuario ->
+                    "hashBCryptSimulado".equals(usuario.getPassword())
+            )
+    );
+}
+
+@Test
+void debeObtenerUsuarioPorId() {
+
+    Usuario usuario = new Usuario(
+            "Usuario Prueba",
+            "prueba@campusflow.com"
+    );
+    usuario.setId(1L);
+
+    when(usuarioRepository.findById(1L))
+            .thenReturn(Optional.of(usuario));
+
+    UsuarioResponse resultado =
+            usuarioService.obtenerUsuarioPorId(1L);
+
+    assertEquals(1L, resultado.getId());
+    assertEquals("Usuario Prueba", resultado.getNombre());
+}
+
+@Test
+void debeRechazarConsultaDeUsuarioInexistente() {
+
+    when(usuarioRepository.findById(999L))
+            .thenReturn(Optional.empty());
+
+    assertThrows(
+            ResourceNotFoundException.class,
+            () -> usuarioService.obtenerUsuarioPorId(999L)
+    );
+}
+
+@Test
+void debeEliminarUsuarioSinRelacionesAcademicas() {
+
+    Usuario usuario = new Usuario(
+            "Usuario Prueba",
+            "prueba@campusflow.com"
+    );
+
+    when(usuarioRepository.findById(1L))
+            .thenReturn(Optional.of(usuario));
+
+    usuarioService.eliminarUsuario(1L);
+
+    verify(usuarioRepository).delete(usuario);
+}
+
+@Test
+void debeRechazarEliminacionDeUsuarioConCursosDictados() {
+
+    Usuario usuario = new Usuario(
+            "Instructor",
+            "instructor@campusflow.com"
+    );
+    usuario.getCursosDictados().add(
+            new Curso("Curso de prueba", "Descripcion")
+    );
+
+    when(usuarioRepository.findById(1L))
+            .thenReturn(Optional.of(usuario));
+
+    assertThrows(
+            UsuarioConRelacionesException.class,
+            () -> usuarioService.eliminarUsuario(1L)
+    );
+
+    verify(usuarioRepository, never()).delete(any(Usuario.class));
+}
+
+@Test
+void debeRechazarEliminacionDeUsuarioConCursosInscritos() {
+
+    Usuario usuario = new Usuario(
+            "Estudiante",
+            "estudiante@campusflow.com"
+    );
+    usuario.getCursosInscritos().add(
+            new Curso("Curso de prueba", "Descripcion")
+    );
+
+    when(usuarioRepository.findById(1L))
+            .thenReturn(Optional.of(usuario));
+
+    assertThrows(
+            UsuarioConRelacionesException.class,
+            () -> usuarioService.eliminarUsuario(1L)
+    );
+
+    verify(usuarioRepository, never()).delete(any(Usuario.class));
 }
 
 

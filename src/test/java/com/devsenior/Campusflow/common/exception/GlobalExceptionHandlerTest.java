@@ -34,4 +34,22 @@ class GlobalExceptionHandlerTest {
                 respuesta.getBody().get("error")
         );
     }
+
+    @Test
+    void debeResponder409CuandoUsuarioTieneRelacionesAcademicas() {
+
+        var respuesta = handler.manejarUsuarioConRelaciones(
+                new UsuarioConRelacionesException()
+        );
+
+        assertEquals(
+                HttpStatus.CONFLICT,
+                respuesta.getStatusCode()
+        );
+        assertNotNull(respuesta.getBody());
+        assertEquals(
+                "No se puede eliminar un usuario con relaciones academicas",
+                respuesta.getBody().get("error")
+        );
+    }
 }

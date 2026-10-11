@@ -17,6 +17,7 @@ import com.devsenior.Campusflow.usuarios.model.PreferenciasUsuario;
 import com.devsenior.Campusflow.common.exception.ResourceNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 import com.devsenior.Campusflow.common.exception.EmailDuplicadoException;
+import com.devsenior.Campusflow.common.exception.UsuarioConRelacionesException;
 
 @Service
 public class UsuarioService {
@@ -77,23 +78,57 @@ public UsuarioResponse actualizarUsuario(
             .toList();
 }
 
+  public UsuarioResponse obtenerUsuarioPorId(Long id) {
+    return usuarioRepository.findById(id)
+            .map(UsuarioMapper::toResponse)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "Usuario no encontrado con ID: " + id
+                    )
+            );
+}
+
+public UsuarioResponse crearUsuarioAdministrativo(
+        CrearUsuarioRequest request) {
+
+    return crearUsuario(request);
+}
 
 public UsuarioResponse registrarUsuario(
         CrearUsuarioRequest request) {
-
-
-if (usuarioRepository.existsByEmail(request.getEmail())) {
-    throw new EmailDuplicadoException(
-            "El correo electrónico ya está registrado"
-    );
-}
-
 
     if (request.getRol() != RolUsuario.ESTUDIANTE &&
             request.getRol() != RolUsuario.INSTRUCTOR) {
 
         throw new IllegalArgumentException(
                 "Solo se permite el registro como estudiante o instructor"
+        );
+    }
+
+    return crearUsuario(request);
+}
+
+@Transactional
+public void eliminarUsuario(Long id) {
+    Usuario usuario = usuarioRepository.findById(id)
+            .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                            "Usuario no encontrado con ID: " + id
+                    )
+            );
+
+    if (!usuario.getCursosDictados().isEmpty()
+            || !usuario.getCursosInscritos().isEmpty()) {
+        throw new UsuarioConRelacionesException();
+    }
+
+    usuarioRepository.delete(usuario);
+}
+
+private UsuarioResponse crearUsuario(CrearUsuarioRequest request) {
+    if (usuarioRepository.existsByEmail(request.getEmail())) {
+        throw new EmailDuplicadoException(
+                "El correo electrónico ya está registrado"
         );
     }
 

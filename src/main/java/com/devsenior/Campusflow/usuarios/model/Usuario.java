@@ -117,5 +117,8 @@ public void setCursosDictados(List<Curso> cursosDictados) {
     this.cursosDictados = cursosDictados;
 }
 
+public List<Curso> getCursosInscritos() {
+    return cursosInscritos;
+}
 
 }

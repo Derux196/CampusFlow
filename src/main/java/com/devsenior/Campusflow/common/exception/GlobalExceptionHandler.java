@@ -64,9 +64,20 @@ public ResponseEntity<Map<String, String>> manejarEmailDuplicado(
             ));
 }
 
+@ExceptionHandler(UsuarioConRelacionesException.class)
+public ResponseEntity<Map<String, String>> manejarUsuarioConRelaciones(
+        UsuarioConRelacionesException ex) {
+
+    return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(Map.of(
+                    "error",
+                    "No se puede eliminar un usuario con relaciones academicas"
+            ));
+}
 
 
-    @ExceptionHandler(Exception.class)
+@ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> manejarGeneral(
             Exception ex) {
 
