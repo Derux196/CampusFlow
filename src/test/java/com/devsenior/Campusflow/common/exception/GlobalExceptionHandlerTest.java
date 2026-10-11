@@ -52,4 +52,22 @@ class GlobalExceptionHandlerTest {
                 respuesta.getBody().get("error")
         );
     }
+
+    @Test
+    void debeResponder409CuandoLaInscripcionEstaDuplicada() {
+
+        var respuesta = handler.manejarInscripcionDuplicada(
+                new InscripcionDuplicadaException()
+        );
+
+        assertEquals(
+                HttpStatus.CONFLICT,
+                respuesta.getStatusCode()
+        );
+        assertNotNull(respuesta.getBody());
+        assertEquals(
+                "El estudiante ya esta inscrito en este curso",
+                respuesta.getBody().get("error")
+        );
+    }
 }

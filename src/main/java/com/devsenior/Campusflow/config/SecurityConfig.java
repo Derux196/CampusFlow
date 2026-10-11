@@ -54,8 +54,30 @@ public class SecurityConfig {
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/cursos",
+                    "/api/cursos/*",
                     "/api/saludo"
                 ).permitAll()
+
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/cursos/instructores/*",
+                    "/api/cursos/estudiantes/*"
+                ).hasRole("ADMINISTRADOR")
+
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/cursos"
+                ).hasRole("ADMINISTRADOR")
+
+                .requestMatchers(
+                    HttpMethod.PUT,
+                    "/api/cursos/*/instructor/*"
+                ).hasRole("ADMINISTRADOR")
+
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/cursos/*/inscripcion"
+                ).hasRole("ESTUDIANTE")
 
                 // Login y registro publicos
                 .requestMatchers(

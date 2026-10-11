@@ -64,6 +64,18 @@ public ResponseEntity<Map<String, String>> manejarEmailDuplicado(
             ));
 }
 
+@ExceptionHandler(InscripcionDuplicadaException.class)
+public ResponseEntity<Map<String, String>> manejarInscripcionDuplicada(
+        InscripcionDuplicadaException ex) {
+
+    return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(Map.of(
+                    "error",
+                    "El estudiante ya esta inscrito en este curso"
+            ));
+}
+
 @ExceptionHandler(UsuarioConRelacionesException.class)
 public ResponseEntity<Map<String, String>> manejarUsuarioConRelaciones(
         UsuarioConRelacionesException ex) {
