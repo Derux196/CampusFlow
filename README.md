@@ -83,18 +83,15 @@ Checkout y suscripción Stripe, y las fechas de creación y activación.
 La configuración depende de variables de entorno. No guardes sus valores en
 archivos versionados:
 
-- `DB_URL`
-- `DB_USERNAME`
-- `DB_PASSWORD`
 - `JWT_SECRET`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_PAGO_UNICO`
 - `STRIPE_PRICE_PLAN_INDIVIDUAL`
 
-Para desarrollo local, activa el perfil `dev` y configura esas variables en tu
-terminal o administrador de secretos local. Los archivos `.env`, propiedades
-locales y logs están excluidos de Git.
+Para desarrollo local, activa el perfil `dev` y configura `DB_PASSWORD` junto
+con las variables de Stripe en tu terminal o administrador de secretos local.
+Los archivos `.env`, propiedades locales y logs están excluidos de Git.
 
 ### Pruebas de pagos
 
@@ -140,6 +137,115 @@ mismo evento no crea filas duplicadas.
 
 No uses `stripe trigger` genérico para validar una activación: sus datos no
 corresponden necesariamente a la sesión pendiente creada por CampusFlow.
+
+## Preparación de despliegue: Render y Supabase
+
+CampusFlow está preparado para ejecutarse en un Web Service de Render usando
+PostgreSQL administrado por Supabase. Esta preparación no crea recursos
+externos, no migra datos de MySQL y no constituye un despliegue realizado.
+
+### Arquitectura prevista
+
+```text
+Cliente HTTPS -> Render Web Service (Spring Boot + Docker)
+                     |                     |
+                     | JDBC con SSL         | webhook firmado
+                     v                     v
+              Supabase PostgreSQL       Stripe Sandbox
+```
+
+Render proporciona el puerto mediante `PORT`; Spring Boot usa `8080` como
+valor local predeterminado. El health check público es `GET /actuator/health`
+sin detalles internos. Los endpoints de usuarios, Checkout y suscripciones
+continúan protegidos por JWT. El webhook de Stripe sigue siendo público
+únicamente porque valida su firma criptográfica.
+
+### Perfiles de datos
+
+| Perfil | Motor | Configuración | Uso |
+|---|---|---|---|
+| `dev` | MySQL local | `application-dev.properties` | Desarrollo local; conserva la base existente. |
+| `test` | H2 en memoria | `application-test.properties` | Pruebas aisladas, sin MySQL, Supabase ni Stripe real. |
+| `prod` | PostgreSQL Supabase | `application-prod.properties` | Render; usa variables de entorno y SSL en la URL JDBC. |
+
+El perfil `prod` usa `spring.jpa.hibernate.ddl-auto=update`. No usa
+`create` ni `create-drop`, por lo que Hibernate no elimina tablas existentes.
+Para cambios futuros de esquema se recomienda introducir migraciones
+versionadas con Flyway antes de evolucionar datos de producción; no copies
+automáticamente datos de MySQL a Supabase.
+
+### Variables de Render y Supabase
+
+Configura estos nombres como variables de entorno en Render, sin registrar sus
+valores en Git:
+
+- `SPRING_PROFILES_ACTIVE` con el perfil `prod`.
+- `SPRING_DATASOURCE_URL`: URL JDBC del **Session Pooler** de Supabase que
+  incluya `sslmode=require`.
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `DB_POOL_MAX_SIZE` (opcional; el valor por defecto es `5`).
+- `APP_PUBLIC_BASE_URL`: URL HTTPS pública definitiva de Render, sin barra
+  final.
+- `JWT_SECRET`
+- `STRIPE_SECRET_KEY` de Sandbox/test.
+- `STRIPE_WEBHOOK_SECRET` del endpoint público de Stripe.
+- `STRIPE_PRICE_PAGO_UNICO`
+- `STRIPE_PRICE_PLAN_INDIVIDUAL`
+
+Render proporciona `PORT` automáticamente; no establezcas un puerto fijo de
+producción. El archivo [render.yaml](./render.yaml) declara los nombres de las
+variables y `autoDeploy: false`, pero no incluye ningún valor secreto.
+
+### Configurar Supabase manualmente
+
+1. Crea un proyecto Supabase y espera a que PostgreSQL esté disponible.
+2. En **Connect**, copia la conexión del **Session Pooler** y conviértela a
+   formato JDBC: `jdbc:postgresql://<host>:5432/postgres?sslmode=require`.
+3. Configura esa URL, usuario y contraseña exclusivamente en Render.
+4. No uses la conexión directa si Render no tiene IPv6 disponible.
+5. Antes de guardar datos reales, define una estrategia de backup y
+   migraciones versionadas. El primer arranque con `update` crea o actualiza
+   el esquema sin operaciones de borrado.
+
+### Desplegar manualmente en Render
+
+1. Crea un **Web Service** desde este repositorio y selecciona la rama `main`.
+2. Elige el runtime **Docker**. Render detecta [Dockerfile](./Dockerfile), por
+   lo que no debes definir comandos alternativos de build o start.
+3. Configura las variables anteriores, usa `/actuator/health` como health
+   check y deja `SPRING_PROFILES_ACTIVE=prod`.
+4. Crea el servicio solo después de revisar los valores y logs de construcción.
+5. Cuando Render asigne la URL HTTPS, configúrala como `APP_PUBLIC_BASE_URL`.
+6. Verifica `GET /actuator/health`, el login y una ruta privada sin JWT antes
+   de probar Checkout.
+
+### Configurar Stripe Sandbox con URL pública
+
+1. Conserva claves y precios de **Sandbox/test**; no uses claves `sk_live_`.
+2. En Stripe, crea o actualiza el endpoint de webhook público:
+   `https://<tu-servicio>.onrender.com/api/stripe/webhook`.
+3. Copia el secreto de ese endpoint únicamente a
+   `STRIPE_WEBHOOK_SECRET` en Render.
+4. Comprueba que las URLs de éxito y cancelación generadas usan
+   `APP_PUBLIC_BASE_URL` y las páginas públicas `.html`.
+5. Realiza una prueba manual controlada después del despliegue y revisa que
+   eventos, pagos y suscripciones se persistan una sola vez.
+
+### Checklist previo al despliegue
+
+- [ ] La suite Maven pasa usando valores ficticios, sin bases de datos externas.
+- [ ] La imagen Docker se construye localmente sin credenciales.
+- [ ] Supabase usa Session Pooler, JDBC y `sslmode=require`.
+- [ ] Render tiene todas las variables requeridas y el perfil `prod`.
+- [ ] `APP_PUBLIC_BASE_URL` coincide con la URL HTTPS real de Render.
+- [ ] El health check devuelve `UP` y no expone detalles.
+- [ ] Stripe Sandbox apunta al webhook público y usa su secreto específico.
+- [ ] No hay secretos, logs, `.env` ni datos locales en Git.
+
+**Pendiente de comprobación manual:** todavía no se ha creado ni desplegado un
+servicio Render, no se ha conectado una base Supabase y no se ha probado Stripe
+contra una URL pública.
 
 ## API REST
 

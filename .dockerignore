@@ -1,0 +1,12 @@
+.git
+.github
+target
+*.log
+.env
+.env.*
+*.local.properties
+.idea
+.vscode
+README.md
+HELP.md
+INFORME_*.md

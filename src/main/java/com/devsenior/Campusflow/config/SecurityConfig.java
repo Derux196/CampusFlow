@@ -59,6 +59,13 @@ public class SecurityConfig {
                 .dispatcherTypeMatchers(DispatcherType.ERROR)
                     .permitAll()
 
+                // Health check de Render sin detalles sensibles
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/actuator/health",
+                    "/actuator/health/**"
+                ).permitAll()
+
                 // Endpoints publicos de consulta
                 .requestMatchers(
                     HttpMethod.GET,

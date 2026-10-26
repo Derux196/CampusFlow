@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: campusflow
+    runtime: docker
+    branch: main
+    autoDeploy: false
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: DB_POOL_MAX_SIZE
+        value: "5"
+      - key: APP_PUBLIC_BASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PAGO_UNICO
+        sync: false
+      - key: STRIPE_PRICE_PLAN_INDIVIDUAL
+        sync: false

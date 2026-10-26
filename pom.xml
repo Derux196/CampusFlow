@@ -56,6 +56,19 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- PostgreSQL para el perfil de produccion -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Health check para Render -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Pruebas JPA -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
