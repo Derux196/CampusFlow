@@ -112,6 +112,18 @@
     <scope>runtime</scope>
 </dependency>
 
+<!-- Stripe: integración de pagos y suscripciones -->
+<dependency>
+    <groupId>com.stripe</groupId>
+    <artifactId>stripe-java</artifactId>
+    <version>33.4.2</version>
+</dependency>
+
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-jackson</artifactId>
+</dependency>
+
     </dependencies>
 
     <build>

@@ -46,6 +46,13 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
 
+                // Paginas publicas de resultado de Checkout
+                .requestMatchers(
+                   HttpMethod.GET,
+                   "/pago-exitoso.html",
+                   "/pago-cancelado.html"
+                ).permitAll()
+
                 // Permitir despachos internos de errores
                 .dispatcherTypeMatchers(DispatcherType.ERROR)
                     .permitAll()
@@ -57,6 +64,12 @@ public class SecurityConfig {
                     "/api/cursos/*",
                     "/api/saludo"
                 ).permitAll()
+
+                // Checkout: requiere un usuario autenticado
+                .requestMatchers(
+                  HttpMethod.POST,
+                  "/api/stripe/checkout/pago-unico"
+                ).authenticated()
 
                 .requestMatchers(
                     HttpMethod.GET,
@@ -85,6 +98,13 @@ public class SecurityConfig {
                     "/api/auth/login",
                     "/api/auth/registro"
                 ).permitAll()
+
+              // Webhook de Stripe: acceso sin JWT.
+          // La firma se validara en StripeWebhookController.
+          .requestMatchers(
+                    HttpMethod.POST,
+                   "/api/stripe/webhook"
+               ).permitAll()
 
                 // Rutas exclusivas de administradores
                 .requestMatchers(
