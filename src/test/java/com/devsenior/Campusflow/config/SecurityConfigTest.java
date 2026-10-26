@@ -17,6 +17,10 @@ import java.util.Optional;
 
 import com.devsenior.Campusflow.usuarios.controller.UsuarioController;
 import com.devsenior.Campusflow.usuarios.service.UsuarioService;
+import com.devsenior.Campusflow.pagos.controller.StripeCheckoutController;
+import com.devsenior.Campusflow.pagos.controller.CheckoutResultController;
+import com.devsenior.Campusflow.pagos.service.StripeCheckoutService;
+import com.devsenior.Campusflow.pagos.service.SuscripcionService;
 
 import java.util.List;
 
@@ -25,6 +29,9 @@ import com.devsenior.Campusflow.usuarios.model.RolUsuario;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.jsonwebtoken.JwtException;
@@ -32,7 +39,9 @@ import io.jsonwebtoken.JwtException;
 
 @WebMvcTest({
     SaludoController.class,
-    UsuarioController.class
+    UsuarioController.class,
+    StripeCheckoutController.class,
+    CheckoutResultController.class
 })
 @Import({
     SecurityConfig.class,
@@ -49,6 +58,12 @@ class SecurityConfigTest {
 private UsuarioService usuarioService;
 
     @MockitoBean
+    private StripeCheckoutService stripeCheckoutService;
+
+    @MockitoBean
+    private SuscripcionService suscripcionService;
+
+    @MockitoBean
     private UsuarioRepository usuarioRepository;
 
     @Test
@@ -60,6 +75,44 @@ private UsuarioService usuarioService;
     @Test
     void debeBloquearUsuariosSinAutenticacion() throws Exception {
         mockMvc.perform(get("/api/usuarios"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void debeBloquearCheckoutSuscripcionSinAutenticacion()
+            throws Exception {
+        mockMvc.perform(post("/api/stripe/checkout/suscripcion"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void debeMostrarResultadosCheckoutSinJwt() throws Exception {
+        mockMvc.perform(get("/pago-exitoso"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/pago-exitoso.html"));
+        mockMvc.perform(get("/pago-exitoso.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString(
+                                "Pago finalizado"
+                        )
+                ));
+        mockMvc.perform(get("/pago-cancelado"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/pago-cancelado.html"));
+        mockMvc.perform(get("/pago-cancelado.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString(
+                                "Pago cancelado"
+                        )
+                ));
+    }
+
+    @Test
+    void debeMantenerCheckoutPagoUnicoProtegidoSinJwt()
+            throws Exception {
+        mockMvc.perform(post("/api/stripe/checkout/pago-unico"))
                 .andExpect(status().isUnauthorized());
     }
 

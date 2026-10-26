@@ -49,7 +49,9 @@ public class SecurityConfig {
                 // Paginas publicas de resultado de Checkout
                 .requestMatchers(
                    HttpMethod.GET,
+                   "/pago-exitoso",
                    "/pago-exitoso.html",
+                   "/pago-cancelado",
                    "/pago-cancelado.html"
                 ).permitAll()
 
@@ -68,7 +70,8 @@ public class SecurityConfig {
                 // Checkout: requiere un usuario autenticado
                 .requestMatchers(
                   HttpMethod.POST,
-                  "/api/stripe/checkout/pago-unico"
+                  "/api/stripe/checkout/pago-unico",
+                  "/api/stripe/checkout/suscripcion"
                 ).authenticated()
 
                 .requestMatchers(

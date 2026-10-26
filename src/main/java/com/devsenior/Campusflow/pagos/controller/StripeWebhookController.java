@@ -2,9 +2,11 @@
 package com.devsenior.Campusflow.pagos.controller;
 
 import com.devsenior.Campusflow.pagos.service.PagoService;
+import com.devsenior.Campusflow.pagos.service.SuscripcionService;
 
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
+import com.stripe.model.Subscription;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
 
@@ -17,20 +19,28 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 public class StripeWebhookController {
 
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(StripeWebhookController.class);
+
     private final String webhookSecret;
     private final PagoService pagoService;
+    private final SuscripcionService suscripcionService;
     private final JsonMapper jsonMapper;
 
     public StripeWebhookController(
             @Value("${stripe.webhook-secret}") String webhookSecret,
-            PagoService pagoService) {
+            PagoService pagoService,
+            SuscripcionService suscripcionService) {
 
         this.webhookSecret = webhookSecret;
         this.pagoService = pagoService;
+        this.suscripcionService = suscripcionService;
         this.jsonMapper = new JsonMapper();
     }
 
@@ -55,21 +65,6 @@ public class StripeWebhookController {
                     payload,
                     signature,
                     webhookSecret
-            );
-
-            System.out.println(
-                    "Version API del evento: "
-                    + evento.getApiVersion()
-            );
-
-            System.out.println(
-                    "Version API de stripe-java: "
-                    + com.stripe.Stripe.API_VERSION
-            );
-
-            System.out.println(
-                    "Evento Stripe verificado: "
-                    + evento.getType()
             );
 
             // 3. Procesar solamente Checkout completado
@@ -116,6 +111,13 @@ public class StripeWebhookController {
                     );
                 }
 
+                if ("subscription".equals(session.getMode())) {
+                    return procesarSuscripcion(
+                            evento,
+                            session
+                    );
+                }
+
                 PagoService.ResultadoRegistroPago resultado =
                         pagoService.registrarPagoCheckout(session);
 
@@ -133,10 +135,40 @@ public class StripeWebhookController {
 
         } catch (Exception ex) {
 
-            ex.printStackTrace();
+            LOGGER.error("Error tecnico al procesar un webhook de Stripe");
 
             return ResponseEntity.internalServerError()
                     .body("Error al procesar webhook");
         }
+    }
+
+    private ResponseEntity<String> procesarSuscripcion(
+            Event evento,
+            Session session) throws Exception {
+
+        String subscriptionId = session.getSubscription();
+
+        if (subscriptionId == null || subscriptionId.isBlank()) {
+            return ResponseEntity.ok("Evento descartado");
+        }
+
+        Subscription stripeSubscription =
+                Subscription.retrieve(subscriptionId);
+
+        SuscripcionService.ResultadoProcesamientoSuscripcion resultado =
+                suscripcionService.procesarCheckoutCompletado(
+                        evento.getId(),
+                        evento.getType(),
+                        session,
+                        stripeSubscription
+                );
+
+        if (resultado
+                == SuscripcionService.ResultadoProcesamientoSuscripcion
+                        .IGNORADA) {
+            return ResponseEntity.ok("Evento descartado");
+        }
+
+        return ResponseEntity.ok("Evento recibido");
     }
 }
