@@ -141,8 +141,9 @@ corresponden necesariamente a la sesión pendiente creada por CampusFlow.
 ## Preparación de despliegue: Render y Supabase
 
 CampusFlow está preparado para ejecutarse en un Web Service de Render usando
-PostgreSQL administrado por Supabase. Esta preparación no crea recursos
-externos, no migra datos de MySQL y no constituye un despliegue realizado.
+PostgreSQL administrado por Supabase. La preparación del código fue publicada previamente; después se realizó
+un despliegue manual en Render y se conectó PostgreSQL de Supabase. No se
+migraron los datos del MySQL local.
 
 ### Arquitectura prevista
 
@@ -243,9 +244,15 @@ variables y `autoDeploy: false`, pero no incluye ningún valor secreto.
 - [ ] Stripe Sandbox apunta al webhook público y usa su secreto específico.
 - [ ] No hay secretos, logs, `.env` ni datos locales en Git.
 
-**Pendiente de comprobación manual:** todavía no se ha creado ni desplegado un
-servicio Render, no se ha conectado una base Supabase y no se ha probado Stripe
-contra una URL pública.
+**Validación manual de clase 16 (26 de octubre de 2026):** CampusFlow se desplegó
+en Render y se comprobó `/actuator/health` con estado `UP`. La aplicación
+registró y autenticó un usuario en PostgreSQL de Supabase, creó un Checkout
+Sandbox de pago único (USD 20), recibió `checkout.session.completed` con
+respuesta HTTP 200 y persistió el pago con estado `PAGADO`. La prueba específica
+de suscripción mensual en el servicio público permanece pendiente.
+
+Consulta [INFORME_CLASE16_DESPLIEGUE.md](INFORME_CLASE16_DESPLIEGUE.md) para
+las evidencias, incidencias, límites y configuración sin secretos.
 
 ## API REST
 
