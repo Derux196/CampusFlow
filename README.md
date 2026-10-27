@@ -248,8 +248,11 @@ variables y `autoDeploy: false`, pero no incluye ningún valor secreto.
 en Render y se comprobó `/actuator/health` con estado `UP`. La aplicación
 registró y autenticó un usuario en PostgreSQL de Supabase, creó un Checkout
 Sandbox de pago único (USD 20), recibió `checkout.session.completed` con
-respuesta HTTP 200 y persistió el pago con estado `PAGADO`. La prueba específica
-de suscripción mensual en el servicio público permanece pendiente.
+respuesta HTTP 200 y persistió el pago con estado `PAGADO`. También se probó
+en Render el Checkout de suscripción mensual (USD 10): se creó una fila
+`PENDIENTE` en Supabase, cambió a `ACTIVA` tras completar Stripe Sandbox y
+se registró `checkout.session.completed` como `PROCESADO` en `eventos_stripe`.
+La prueba no incluye renovaciones ni cancelaciones automáticas.
 
 Consulta [INFORME_CLASE16_DESPLIEGUE.md](INFORME_CLASE16_DESPLIEGUE.md) para
 las evidencias, incidencias, límites y configuración sin secretos.
