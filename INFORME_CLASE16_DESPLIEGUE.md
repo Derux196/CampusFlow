@@ -43,9 +43,11 @@ Supabase — PostgreSQL     Stripe Sandbox
 | Checkout visual | Stripe Sandbox redirigió a `/pago-exitoso.html` | Aprobada |
 | Entrega webhook | Stripe Workbench mostró `checkout.session.completed`, estado entregado, HTTP 200 y respuesta `Evento recibido` | Aprobada |
 | Pago persistido | `public.pagos`: registro ID 1, estado `PAGADO`, `monto_centavos=2000`, `moneda=USD`, IDs de sesión y Payment Intent | Aprobada |
-| Suscripción mensual en Render | No se completó una prueba específica de suscripción en el despliegue público | Pendiente |
+| Checkout mensual en Render | `POST /api/stripe/checkout/suscripcion` devolvió URL de Stripe Sandbox y creó una fila `PENDIENTE` en `public.suscripciones`, plan `INDIVIDUAL` | Aprobada |
+| Activación de suscripción | Tras Checkout Sandbox, la fila ID 1 cambió de `PENDIENTE` a `ACTIVA`, registró `fecha_activacion` y un ID `sub_...` | Aprobada |
+| Trazabilidad del webhook de suscripción | `public.eventos_stripe` tiene registro ID 1, `checkout.session.completed`, estado `PROCESADO`, `stripe_event_id` `evt_...` y fecha de procesamiento | Aprobada |
 
-**Alcance del resultado:** la evidencia confirma el flujo de pago único en el despliegue público de prueba. La respuesta 200 de un webhook no demostraría por sí sola persistencia; aquí se contrastó además con el registro `PAGADO` en Supabase. La captura de `pagos` no mostraba la columna `usuario_id`, por lo que la asociación exacta debe comprobarse explícitamente si se requiere para la entrega.
+**Alcance del resultado:** la evidencia confirma los flujos de pago único y activación inicial de suscripción mensual en el despliegue público de prueba. La respuesta 200 de un webhook no demostraría por sí sola persistencia; aquí se contrastó además con el registro `PAGADO` en Supabase. La captura de `pagos` no mostraba la columna `usuario_id`, por lo que la asociación exacta debe comprobarse explícitamente si se requiere para la entrega.
 
 ## 4. Incidencias y resolución
 
@@ -76,6 +78,12 @@ La inspección de `StripeWebhookController`, `PagoService`, `SuscripcionService`
 
 **Conclusión:** cero filas en `eventos_stripe` después de un pago único es el comportamiento previsto; no es un defecto que exija corrección. La recepción de un evento duplicado en la nube no fue ensayada manualmente en esta tanda de pruebas.
 
+### 4.3 Error HTTP 500 al crear suscripción mensual
+
+Render registró `java.lang.IllegalStateException: El precio configurado no es mensual recurrente`. La variable `STRIPE_PRICE_PLAN_INDIVIDUAL` apuntaba a un precio no mensual. Se corrigió con el identificador `price_...` de **Plan Individual (USD 10 por mes)**, se aplicó la nueva configuración en Render y el servicio volvió a `Live`.
+
+Después se comprobó la creación de la fila local `PENDIENTE`, su transición a `ACTIVA` y el evento de suscripción `PROCESADO`. No se requirió cambio al código Java.
+
 ## 5. Seguridad y configuración
 
 Las siguientes variables se configuraron en Render; este informe **no contiene sus valores secretos**:
@@ -103,19 +111,18 @@ Esta evidencia es distinta de la validación manual en Render/Supabase y no repr
 
 ## 7. Estado y tareas pendientes
 
-**Validado:** Docker en Render, endpoint de salud, esquema PostgreSQL, registro, login JWT, creación de Checkout único, redirección de éxito, recepción HTTP 200 del webhook y persistencia del pago único de USD 20 en Supabase.
+**Validado:** Docker en Render, endpoint de salud, esquema PostgreSQL, registro, login JWT, Checkout único y pago persistido de USD 20, Checkout mensual de USD 10, transición `PENDIENTE` → `ACTIVA`, identificador de suscripción `sub_...` y persistencia del evento `checkout.session.completed` como `PROCESADO` en Supabase.
 
 **Pendiente o fuera de alcance de estas evidencias:**
 
-1. Prueba manual específica de la **suscripción mensual** contra Render/Supabase: creación de sesión, estado `PENDIENTE`, transición a `ACTIVA` y registro `PROCESADO` en `eventos_stripe`. El flujo ya había sido probado en el entorno local/Sandbox durante la clase 15, pero eso no sustituye la validación del despliegue público.
-2. Verificar de forma explícita `usuario_id` del pago si la rúbrica exige demostrar asociación.
-3. Comprobar reentrega/idempotencia en nube si se solicita como evidencia específica; evitar compras duplicadas.
-4. Renovaciones automáticas y cancelaciones de suscripción: extensiones no implementadas, según el alcance documentado.
-5. Endurecimiento y revisión antes de cualquier uso real: configuración de seguridad, migraciones versionadas, gestión de secretos, monitoreo y preparación para producción.
+1. Verificar de forma explícita `usuario_id` del pago si la rúbrica exige demostrar asociación.
+2. Comprobar reentrega/idempotencia en nube si se solicita como evidencia específica; evitar compras duplicadas.
+3. Renovaciones automáticas y cancelaciones de suscripción: extensiones no implementadas, según el alcance documentado.
+4. Endurecimiento y revisión antes de cualquier uso real: configuración de seguridad, migraciones versionadas, gestión de secretos, monitoreo y preparación para producción.
 
 ## 8. Conclusión
 
-La clase 16 cuenta con una implementación desplegada y con **validación manual satisfactoria del flujo principal de pago único**: desde una petición autenticada a CampusFlow en Render hasta Stripe Sandbox, recepción del webhook y persistencia en PostgreSQL de Supabase. La aplicación no se considera lista para cobros reales. La prueba específica de suscripción en la nube continúa pendiente y debe ejecutarse solamente si el alcance académico la requiere.
+La clase 16 cuenta con una implementación desplegada y **validación manual satisfactoria de los flujos principales de pago único y activación inicial de suscripción mensual**, desde CampusFlow en Render hasta Stripe Sandbox, recepción de webhooks y persistencia en PostgreSQL de Supabase. La aplicación no se considera lista para cobros reales, y las renovaciones/cancelaciones automáticas permanecen fuera de estas pruebas.
 
 ---
 
